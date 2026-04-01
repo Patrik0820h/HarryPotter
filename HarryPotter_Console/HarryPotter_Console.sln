@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35913.81 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HarryPotter_Console", "HarryPotter_Console\HarryPotter_Console.csproj", "{0AEDE52E-BA4A-4FF0-B3F5-D89924190A40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HarryPotter_UI", "..\HarryPotter_UI\HarryPotter_UI.csproj", "{4AC93CCA-F89E-4990-A11A-924DC0E88081}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0AEDE52E-BA4A-4FF0-B3F5-D89924190A40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AEDE52E-BA4A-4FF0-B3F5-D89924190A40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AEDE52E-BA4A-4FF0-B3F5-D89924190A40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AEDE52E-BA4A-4FF0-B3F5-D89924190A40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AC93CCA-F89E-4990-A11A-924DC0E88081}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AC93CCA-F89E-4990-A11A-924DC0E88081}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AC93CCA-F89E-4990-A11A-924DC0E88081}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AC93CCA-F89E-4990-A11A-924DC0E88081}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A36D9647-9905-4D9F-A266-97A0D8F73C4C}
+	EndGlobalSection
+EndGlobal
