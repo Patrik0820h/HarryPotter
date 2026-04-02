@@ -5,11 +5,9 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Net.Http;
+using Newtonsoft.Json;
 
 namespace HarryPotter_UI
 {
@@ -18,20 +16,11 @@ namespace HarryPotter_UI
 
         public class Book
         {
-            [JsonPropertyName("original_title")]
-            public string OriginalTitle { get; set; }
-
-            [JsonPropertyName("pages")]
-            public int Pages { get; set; }
-
-            [JsonPropertyName("release_date")]
-            public string ReleaseDate { get; set; }
-
-            [JsonPropertyName("description")]
-            public string Description { get; set; }
-
-            [JsonPropertyName("image")]
-            public string CoverUrl { get; set; }
+            public string original_title { get; set; }
+            public int pages { get; set; }
+            public string release_date { get; set; }
+            public string description { get; set; }
+            public string cover { get; set; } 
         }
 
         public BooksForm()
@@ -41,44 +30,71 @@ namespace HarryPotter_UI
 
         private async void button1_Click(object sender, EventArgs e)
         {
-            string apiUrl = "https://potterapi-fedeperin.vercel.app/en/books";
-
-            using (HttpClient client = new HttpClient())
+            try
             {
-                
+                using (HttpClient client = new HttpClient())
+                {
+                    string url = "https://potterapi-fedeperin.vercel.app/en/books";
+                    string json = await client.GetStringAsync(url);
+
+                    List<Book> books = JsonConvert.DeserializeObject<List<Book>>(json);
+
+                    dgvBooks.DataSource = books;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Hiba történt: " + ex.Message);
             }
 
         }
 
         private void dgvBooks_SelectionChanged(object sender, EventArgs e)
         {
-            if (dgvBooks.SelectedRows.Count == 0) { return;};
+            if (dgvBooks.CurrentRow == null) return;
 
-            Book selectedBook = dgvBooks.SelectedRows[0].DataBoundItem as Book;
-            if (selectedBook != null)
+            Book selectedBook = dgvBooks.CurrentRow.DataBoundItem as Book;
+            if (selectedBook == null) return;
+
+            label1.Text = selectedBook.description;
+
+            try
             {
-                label1.Text = selectedBook.Description;
-
-                try
-                {
-                    pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
-                    pictureBox1.Load(selectedBook.CoverUrl);
-                }
-                catch
-                {
-                    pictureBox1.Image = null;
-                }
+                pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
+                pictureBox1.Dock = DockStyle.Fill;
+                pictureBox1.Load(selectedBook.cover);
             }
-        }
-
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
+            catch
+            {
+                pictureBox1.Image = null;
+            }
         }
 
         private void BooksForm_Load(object sender, EventArgs e)
         {
-            
+            dgvBooks.AutoGenerateColumns = false;
+
+            dgvBooks.Columns.Add(new DataGridViewTextBoxColumn()
+            {
+                DataPropertyName = "original_title",
+                HeaderText = "Eredeti cím"
+            });
+
+            dgvBooks.Columns.Add(new DataGridViewTextBoxColumn()
+            {
+                DataPropertyName = "pages",
+                HeaderText = "Oldalak"
+            });
+
+            dgvBooks.Columns.Add(new DataGridViewTextBoxColumn()
+            {
+                DataPropertyName = "release_date",
+                HeaderText = "Kiadás dátuma"
+            });
+        }
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
     }
 }
