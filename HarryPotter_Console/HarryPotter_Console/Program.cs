@@ -1,5 +1,6 @@
 ﻿using MySql.Data.MySqlClient;
 using Mysqlx.Datatypes;
+using Org.BouncyCastle.Pqc.Crypto.Frodo;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -39,20 +40,20 @@ namespace HarryPotter_Console
         }
         static void Main(string[] args)
         {
-            LoadSpells("spells.csv");
+            //List<Spell> spells = LoadSpells("spells.csv");
             LoadCharacter("characters.csv");
 
-            string conn = "Server=localhost;Database=harrypotter;UId=root;Password=;";
-            MySQL(conn);
+            //string conn = "Server=localhost;Database=harrypotter;UId=root;Password=;";
+            //MySQL(conn);
         }
-        static void LoadSpells(string path) 
+        static List<Spell> LoadSpells(string path) 
         {
             List<Spell> spells = new List<Spell>();
 
             if (!File.Exists(path)) 
             { 
                 Console.WriteLine("A megadott spell file nem található!"); 
-                return;
+                return spells;
             }
 
             var regex = new Regex(@"^([^,]+),(""[^""]*""|[^,]+),(\d+)$");
@@ -85,29 +86,123 @@ namespace HarryPotter_Console
             {
                 Console.WriteLine($"Név: {item.Name} | Használat: {item.Use} | Index: {item.Index}");
             }
+            return spells;
         }
-        static void LoadCharacter(string path) 
+        static List<Character> LoadCharacter(string path) 
         {
-            StreamReader sr = new StreamReader(path);
-            if (!File.Exists(path)) { Console.WriteLine("A megadott character file nem található!"); }
-            sr.ReadLine();
-            string line;
-            while (!sr.EndOfStream) 
+            List<Character> characters = new List<Character>();
+
+            if (!File.Exists(path))
             {
-                line = sr.ReadLine();
+                Console.WriteLine("A megadott character file nem található!");
+                return characters;
             }
-            sr.Close();
+
+            using (StreamReader sr = new StreamReader(path))
+            {
+                sr.ReadLine(); // header átlépése
+                string line;
+
+                while (!sr.EndOfStream)
+                {
+                    line = sr.ReadLine();
+                    string[] fields = line.Split(new char[] { ',' }, System.StringSplitOptions.None);
+
+                    if (fields.Length < 9)
+                    {
+                        Console.WriteLine($"Hibás sor: {line}");
+                        continue;
+                    }
+
+                    var character = new Character();
+                    character.FullName = fields[0].Trim('"');
+                    character.Nickname = fields[1].Trim('"');
+                    character.HogwartsHouse = fields[2].Trim('"');
+                    character.InterpretedBy = fields[3].Trim('"');
+                    character.Image = fields[6].Trim('"');
+                    
+                    if (DateTime.TryParse(fields[7], out DateTime birthdate))
+                    {
+                        character.Birthdate = birthdate;
+                    }
+                    
+                    if (int.TryParse(fields[8], out int index))
+                    {
+                        character.Index = index;
+                    }
+
+                    // Gyerekek feldolgozása
+                    character.Children = new List<Child>();
+                    if (!string.IsNullOrEmpty(fields[4]))
+                    {
+                        string[] childrenNames = fields[4].Split(';');
+                        foreach (var childName in childrenNames)
+                        {
+                            character.Children.Add(new Child { FullName = childName.Trim() });
+                        }
+                    }
+
+                    // Varázslatok feldolgozása
+                    character.KnownSpells = new List<Spell>();
+                    if (!string.IsNullOrEmpty(fields[8]))
+                    {
+                        string[] spellNames = fields[8].Split(';');
+                        foreach (var spellName in spellNames)
+                        {
+                            character.KnownSpells.Add(new Spell { Name = spellName.Trim() });
+                        }
+                    }
+
+                    characters.Add(character);
+                }
+            }
+
+            foreach (var item in characters)
+            {
+                Console.WriteLine($"Név: {item.FullName} | Becenév: {item.Nickname} | Mágusház: {item.HogwartsHouse} | Megformálta: {item.InterpretedBy} | Kép: {item.Image} | Születésnap: {item.Birthdate}");
+                
+                if (item.Children.Count > 0)
+                {
+                    Console.WriteLine($"Gyerek neve: {string.Join(", ", item.Children.Select(c => c.FullName))}");
+                }
+                
+                if (item.KnownSpells.Count > 0)
+                {
+                    Console.WriteLine($"Ismert varázslatok neve: {string.Join(", ", item.KnownSpells.Select(s => s.Name))}");
+                }
+            }
+
+            return characters;
         }
         static void MySQL(string connection) 
         {
             string connectionString = connection;
+            List<Spell> spells = LoadSpells("spells.csv");
 
             using (var conn = new MySqlConnection(connectionString))
             {
+                conn.Open();
+
+                //----------------------------------------------------------------
                 string createSpellsTable = "CREATE TABLE IF NOT EXISTS Spells";
-                string createCharactersTable = "CREATE TABLE IF NOT EXISTS Employees ()";
-                string createChildrenTable = "CREATE TABLE IF NOT EXISTS Employees ()";
-                string createCharacterSpellsTable = "CREATE TABLE IF NOT EXISTS Employees ()";
+                MySqlCommand cmdCreateSpells = new MySqlCommand(createSpellsTable, conn);
+                cmdCreateSpells.ExecuteNonQuery();
+
+                string insertSpellQuery = "INSERT INTO Spells (Name, Use, Index) VALUES (@Name, @Use, @Index)";
+                MySqlCommand cmdInsertSpell = new MySqlCommand(insertSpellQuery, conn);
+                for (int i = 0; i < spells.Count; i++)
+                {
+                    cmdInsertSpell.Parameters.AddWithValue("@Name", spells[i].Name);
+                    cmdInsertSpell.Parameters.AddWithValue("@Use", spells[i].Use);
+                    cmdInsertSpell.Parameters.AddWithValue("@Index", spells[i].Index);
+                }
+                cmdInsertSpell.ExecuteNonQuery();
+                //----------------------------------------------------------------
+
+
+                //string createCharactersTable = "CREATE TABLE IF NOT EXISTS Employees ()";
+                //string createChildrenTable = "CREATE TABLE IF NOT EXISTS Employees ()";
+                //string createCharacterSpellsTable = "CREATE TABLE IF NOT EXISTS Employees ()";
 
 
 
@@ -115,11 +210,10 @@ namespace HarryPotter_Console
                 string query = "INSERT INTO Employees (FirstName, LastName, Position, Salary) VALUES (@FirstName, @LastName, @Position, @Salary)";
                 MySqlCommand cmd = new MySqlCommand(query, conn);
                 // Add parameters to prevent SQL injection
-                cmd.Parameters.AddWithValue("@FirstName", firstName);
-                cmd.Parameters.AddWithValue("@LastName", lastName);
-                cmd.Parameters.AddWithValue("@Position", position);
-                cmd.Parameters.AddWithValue("@Salary", salary);
-                connection.Open();
+                //cmd.Parameters.AddWithValue("@FirstName", firstName);
+                //cmd.Parameters.AddWithValue("@LastName", lastName);
+                //cmd.Parameters.AddWithValue("@Position", position);
+                //cmd.Parameters.AddWithValue("@Salary", salary);
                 cmd.ExecuteNonQuery(); // Execute the insert command
             }
         }
