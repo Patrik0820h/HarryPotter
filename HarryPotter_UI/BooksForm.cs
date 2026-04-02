@@ -51,7 +51,7 @@ namespace HarryPotter_UI
 
         private void dgvBooks_SelectionChanged(object sender, EventArgs e)
         {
-            if (dgvBooks.CurrentRow == null) return;
+            if (dgvBooks.CurrentRow == null) { return; }
 
             Book selectedBook = dgvBooks.CurrentRow.DataBoundItem as Book;
             if (selectedBook == null) return;
