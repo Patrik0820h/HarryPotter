@@ -1,13 +1,9 @@
 ﻿using MySql.Data.MySqlClient;
-using Mysqlx.Datatypes;
-using Org.BouncyCastle.Pqc.Crypto.Frodo;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace HarryPotter_Console
 {
@@ -40,11 +36,8 @@ namespace HarryPotter_Console
         }
         static void Main(string[] args)
         {
-            //List<Spell> spells = LoadSpells("spells.csv");
-            LoadCharacter("characters.csv");
-
-            //string conn = "Server=localhost;Database=harrypotter;UId=root;Password=;";
-            //MySQL(conn);
+            string conn = "Server=localhost;Database=harrypotter;UId=root;Password=;";
+            MySQL(conn);
         }
         static List<Spell> LoadSpells(string path) 
         {
@@ -82,10 +75,6 @@ namespace HarryPotter_Console
                 }
             }
 
-            foreach (var item in spells)
-            {
-                Console.WriteLine($"Név: {item.Name} | Használat: {item.Use} | Index: {item.Index}");
-            }
             return spells;
         }
         static List<Character> LoadCharacter(string path) 
@@ -100,13 +89,13 @@ namespace HarryPotter_Console
 
             using (StreamReader sr = new StreamReader(path))
             {
-                sr.ReadLine(); // header átlépése
+                sr.ReadLine();
                 string line;
 
                 while (!sr.EndOfStream)
                 {
                     line = sr.ReadLine();
-                    string[] fields = line.Split(new char[] { ',' }, System.StringSplitOptions.None);
+                    string[] fields = line.Split(',');
 
                     if (fields.Length < 9)
                     {
@@ -120,33 +109,28 @@ namespace HarryPotter_Console
                     character.HogwartsHouse = fields[2].Trim('"');
                     character.InterpretedBy = fields[3].Trim('"');
                     character.Image = fields[5].Trim('"');
-                    
-                    if (DateTime.TryParse(fields[6], out DateTime birthdate))
+
+                    string datePart = fields[6] + "," + fields[7];
+                    if (DateTime.TryParse(datePart.Trim('"'), out DateTime birthdate))
                     {
                         character.Birthdate = birthdate;
                     }
-                    
-                    if (int.TryParse(fields[7], out int index))
+
+                    if (int.TryParse(fields[8], out int index))
                     {
                         character.Index = index;
                     }
 
-                    // Gyerekek feldolgozása
                     character.Children = new List<Child>();
                     if (!string.IsNullOrEmpty(fields[4]))
                     {
-                        string[] childrenNames = fields[4].Split(';');
-                        foreach (var childName in childrenNames)
-                        {
-                            character.Children.Add(new Child { FullName = childName.Trim() });
-                        }
+                        character.Children.Add(new Child { FullName = fields[4].Trim('"') });
                     }
 
-                    // Varázslatok feldolgozása
                     character.KnownSpells = new List<Spell>();
-                    if (!string.IsNullOrEmpty(fields[8]))
+                    if (fields.Length > 9 && !string.IsNullOrEmpty(fields[9]))
                     {
-                        string[] spellNames = fields[8].Split(';');
+                        string[] spellNames = fields[9].Split(';');
                         foreach (var spellName in spellNames)
                         {
                             character.KnownSpells.Add(new Spell { Name = spellName.Trim() });
@@ -157,19 +141,49 @@ namespace HarryPotter_Console
                 }
             }
 
-            foreach (var item in characters)
+            var sortedCharacters = characters.OrderByDescending(c => c.Birthdate).ToList();
+            Console.WriteLine("Rendezve születési dátum szerint csökkenő sorrendben:");
+            Console.WriteLine();
+            foreach (var item in sortedCharacters)
             {
-                Console.WriteLine($"Név: {item.FullName} | Becenév: {item.Nickname} | Mágusház: {item.HogwartsHouse} | Megformálta: {item.InterpretedBy} | Kép: {item.Image} | Születésnap: {item.Birthdate}");
-                
-                if (item.Children.Count > 0)
-                {
-                    Console.WriteLine($"Gyerek neve: {string.Join(", ", item.Children.Select(c => c.FullName))}");
-                }
-                
+                Console.WriteLine($"Név: {item.FullName} | Születés: {item.Birthdate:yyyy.MM.dd} | Becenév: {item.Nickname}");
+
                 if (item.KnownSpells.Count > 0)
                 {
-                    Console.WriteLine($"Ismert varázslatok neve: {string.Join(", ", item.KnownSpells.Select(s => s.Name))}");
+                    Console.WriteLine($"Varázslatok: {string.Join(", ", item.KnownSpells.Select(s => s.Name))}");
                 }
+
+                if (item.Children.Count > 0)
+                {
+                    Console.WriteLine($"Gyermekek: {string.Join(", ", item.Children.Select(c => c.FullName))}");
+                }
+
+                Console.WriteLine();
+            }
+
+            var oldest = characters.OrderBy(c => c.Birthdate).First();
+            var youngest = characters.OrderByDescending(c => c.Birthdate).First();
+
+            Console.WriteLine($"Legidősebb: {oldest.FullName}");
+            Console.WriteLine($"Legatalabb: {youngest.FullName}");
+            Console.WriteLine();
+
+            Console.Write("Adj meg egy becenevet: ");
+            string input = Console.ReadLine();
+
+            var finder = characters.FirstOrDefault(c => c.Nickname.ToLower().Equals(input.ToLower()));
+
+            if (string.IsNullOrWhiteSpace(input) || finder == null)
+            {
+                Console.WriteLine("Nincs ilyen karakter.");
+            }
+            else
+            {
+                var spells = string.Join(", ", finder.KnownSpells.Select(s => s.Name));
+
+                var children = string.Join(", ", finder.Children.Select(c => c.FullName));
+
+                Console.WriteLine($"Varázslatai: {spells}, Gyermekei: {children}");
             }
 
             return characters;
@@ -178,43 +192,71 @@ namespace HarryPotter_Console
         {
             string connectionString = connection;
             List<Spell> spells = LoadSpells("spells.csv");
+            List<Character> characters = LoadCharacter("characters.csv");
 
             using (var conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
 
-                //----------------------------------------------------------------
-                string createSpellsTable = "CREATE TABLE IF NOT EXISTS Spells";
+
+                string createSpellsTable = "CREATE TABLE IF NOT EXISTS Spells (SpellID INT AUTO_INCREMENT PRIMARY KEY, Name VARCHAR(255), `Use` VARCHAR(255))";
                 MySqlCommand cmdCreateSpells = new MySqlCommand(createSpellsTable, conn);
                 cmdCreateSpells.ExecuteNonQuery();
 
-                string insertSpellQuery = "INSERT INTO Spells (Name, Use, Index) VALUES (@Name, @Use, @Index)";
+                string insertSpellQuery = "INSERT INTO Spells (Name, `Use`) VALUES (@Name, @Use)";
                 MySqlCommand cmdInsertSpell = new MySqlCommand(insertSpellQuery, conn);
                 for (int i = 0; i < spells.Count; i++)
                 {
+                    cmdInsertSpell.Parameters.Clear();
                     cmdInsertSpell.Parameters.AddWithValue("@Name", spells[i].Name);
                     cmdInsertSpell.Parameters.AddWithValue("@Use", spells[i].Use);
-                    cmdInsertSpell.Parameters.AddWithValue("@Index", spells[i].Index);
+                    cmdInsertSpell.ExecuteNonQuery();
                 }
-                cmdInsertSpell.ExecuteNonQuery();
-                //----------------------------------------------------------------
-
-
-                //string createCharactersTable = "CREATE TABLE IF NOT EXISTS Employees ()";
-                //string createChildrenTable = "CREATE TABLE IF NOT EXISTS Employees ()";
-                //string createCharacterSpellsTable = "CREATE TABLE IF NOT EXISTS Employees ()";
 
 
 
+                string createCharactersTable = "CREATE TABLE IF NOT EXISTS Characters (CharacterID INT AUTO_INCREMENT PRIMARY KEY, FullName VARCHAR(255), NickName VARCHAR(255), HogWartsHouse VARCHAR(255), InterPretedBy VARCHAR(255), Image VARCHAR(255), BirthDate DATE)";
+                MySqlCommand cmdCreateCharacters = new MySqlCommand(createCharactersTable, conn);
+                cmdCreateCharacters.ExecuteNonQuery();
 
-                string query = "INSERT INTO Employees (FirstName, LastName, Position, Salary) VALUES (@FirstName, @LastName, @Position, @Salary)";
-                MySqlCommand cmd = new MySqlCommand(query, conn);
-                // Add parameters to prevent SQL injection
-                //cmd.Parameters.AddWithValue("@FirstName", firstName);
-                //cmd.Parameters.AddWithValue("@LastName", lastName);
-                //cmd.Parameters.AddWithValue("@Position", position);
-                //cmd.Parameters.AddWithValue("@Salary", salary);
-                cmd.ExecuteNonQuery(); // Execute the insert command
+                string insertCharacterQuery = "INSERT INTO Characters (FullName, NickName, HogWartsHouse, InterPretedBy, Image, BirthDate) VALUES (@FullName, @NickName, @HogWartsHouse, @InterPretedBy, @Image, @BirthDate)";
+                MySqlCommand cmdInsertCharacter = new MySqlCommand(insertCharacterQuery, conn);
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    cmdInsertCharacter.Parameters.Clear();
+                    cmdInsertCharacter.Parameters.AddWithValue("@FullName", characters[i].FullName);
+                    cmdInsertCharacter.Parameters.AddWithValue("@NickName", characters[i].Nickname);
+                    cmdInsertCharacter.Parameters.AddWithValue("@HogWartsHouse", characters[i].HogwartsHouse);
+                    cmdInsertCharacter.Parameters.AddWithValue("@InterPretedBy", characters[i].InterpretedBy);
+                    cmdInsertCharacter.Parameters.AddWithValue("@Image", characters[i].Image);
+                    cmdInsertCharacter.Parameters.AddWithValue("@BirthDate", characters[i].Birthdate);
+                    cmdInsertCharacter.ExecuteNonQuery();
+                }
+
+
+
+                string createChildrenTable = "CREATE TABLE IF NOT EXISTS Children (ChildID INT AUTO_INCREMENT PRIMARY KEY, CharacterID INT, FOREIGN KEY (CharacterID) REFERENCES Characters(CharacterID), FullName VARCHAR(255))";
+                MySqlCommand cmdCreateChildren = new MySqlCommand(createChildrenTable, conn);
+                cmdCreateChildren.ExecuteNonQuery();
+
+                string insertChildQuery = "INSERT INTO Children (FullName) VALUES (@FullName)";
+                MySqlCommand cmdInsertChild = new MySqlCommand(insertChildQuery, conn);
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    foreach (var child in characters[i].Children)
+                    {
+                        cmdInsertChild.Parameters.Clear();
+                        cmdInsertChild.Parameters.AddWithValue("@FullName", child.FullName);
+                        cmdInsertChild.ExecuteNonQuery();
+                    }
+                }
+
+
+
+                string createCharacterSpellsTable = "CREATE TABLE CharacterSpells (CharacterID INT, SpellID INT, PRIMARY KEY(CharacterID, SpellID), FOREIGN KEY(CharacterID) REFERENCES Characters(CharacterID), FOREIGN KEY(SpellID) REFERENCES Spells(SpellID));";
+                MySqlCommand cmdCreateCharacterSpells = new MySqlCommand(createCharacterSpellsTable, conn);
+                cmdCreateCharacterSpells.ExecuteNonQuery();
+
             }
         }
     }
