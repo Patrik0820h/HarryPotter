@@ -119,14 +119,14 @@ namespace HarryPotter_Console
                     character.Nickname = fields[1].Trim('"');
                     character.HogwartsHouse = fields[2].Trim('"');
                     character.InterpretedBy = fields[3].Trim('"');
-                    character.Image = fields[6].Trim('"');
+                    character.Image = fields[5].Trim('"');
                     
-                    if (DateTime.TryParse(fields[7], out DateTime birthdate))
+                    if (DateTime.TryParse(fields[6], out DateTime birthdate))
                     {
                         character.Birthdate = birthdate;
                     }
                     
-                    if (int.TryParse(fields[8], out int index))
+                    if (int.TryParse(fields[7], out int index))
                     {
                         character.Index = index;
                     }
